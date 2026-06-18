@@ -1,0 +1,14 @@
+const { Queue } = require("bullmq");
+
+const redisConnection = require(
+  "../config/redis"
+);
+
+const imageQueue = new Queue(
+  "image-processing",
+  {
+    connection: redisConnection
+  }
+);
+
+module.exports = imageQueue;

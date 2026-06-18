@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets (never commit real values)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Google Cloud service account keys
+**/google-vision.json
+**/*service-account*.json
+**/image-processing-*.json
+
+# Uploaded media (local dev only)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Build output
+frontend/dist/
+dist/
+build/
+
+# Logs & OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test coverage
+coverage/
