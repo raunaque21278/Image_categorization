@@ -1,0 +1,370 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Postman Collections",
+    "description": "Postman collection for the AI-Powered Media Processing Microservice.\n\n## Setup\n1. Import this collection into Postman.\n2. Ensure the API is running at `http://localhost:5000` (or update the `baseUrl` variable).\n3. Run **Auth → Sign Up** or **Auth → Login** — the JWT token is saved automatically.\n4. Use **Jobs → Upload Image** to upload a file (JPG, PNG, WEBP, max 5 MB).\n\n## Auth\nProtected routes use `Authorization: Bearer {{token}}`.\n\n## Note\nThe **Retry Job** endpoint is defined in code but must be mounted in `server.js` (`app.use('/api/retry', retryRoutes)`) to work.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "jobId",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "Returns API status message."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Sign Up",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.token) {",
+                  "        pm.collectionVariables.set('token', json.token);",
+                  "    }",
+                  "    if (json.user && json.user.id) {",
+                  "        pm.collectionVariables.set('userId', json.user.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signup"]
+            },
+            "description": "Register a new user. Returns JWT token and user object."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.token) {",
+                  "        pm.collectionVariables.set('token', json.token);",
+                  "    }",
+                  "    if (json.user && json.user.id) {",
+                  "        pm.collectionVariables.set('userId', json.user.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login with email and password. Returns JWT token."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Get the authenticated user's profile. Requires Bearer token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "Upload Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.jobId) {",
+                  "        pm.collectionVariables.set('jobId', json.jobId);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": [],
+                  "description": "JPG, PNG, or WEBP — max 5 MB"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "jobs", "upload"]
+            },
+            "description": "Upload an image for AI processing. Returns jobId immediately with status `pending`.\n\nIn Postman: select a file for the `image` field before sending."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Jobs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const jobs = pm.response.json();",
+                  "    if (Array.isArray(jobs) && jobs.length > 0 && jobs[0]._id) {",
+                  "        pm.collectionVariables.set('jobId', jobs[0]._id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "jobs"]
+            },
+            "description": "List all jobs for the authenticated user, sorted by newest first."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job By ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "jobs", "{{jobId}}"]
+            },
+            "description": "Get full job details including caption, labels, flagged status, and safety classification."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Uploaded Image",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/uploads/example.jpg",
+              "host": ["{{baseUrl}}"],
+              "path": ["uploads", "example.jpg"]
+            },
+            "description": "Serve a stored uploaded image. Replace `example.jpg` with the filename from `job.imageUrl`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Retry",
+      "item": [
+        {
+          "name": "Retry Failed Job",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/retry/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "retry", "{{jobId}}"]
+            },
+            "description": "Re-queue a failed job for processing. Requires `retryRoutes` to be mounted in `server.js`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Queue (Debug)",
+      "item": [
+        {
+          "name": "Get Queue Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/test/queue-count",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "test", "queue-count"]
+            },
+            "description": "Returns BullMQ queue stats: waiting, active, and completed job counts."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Internal",
+      "item": [
+        {
+          "name": "Notify Job Completed (Worker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"jobId\": \"{{jobId}}\",\n  \"status\": \"completed\",\n  \"caption\": \"A dog is visible in the image.\",\n  \"labels\": [\"Dog\", \"Pet\", \"Mammal\"],\n  \"flagged\": false,\n  \"flaggedCategory\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/socket/job-completed",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "socket", "job-completed"]
+            },
+            "description": "Internal endpoint called by the worker to emit a WebSocket `job-completed` event to the user."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
