@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useState
 } from "react";
@@ -14,7 +15,7 @@ export default function Dashboard() {
     useState([]);
 
   const refreshJobs =
-    async () => {
+    useCallback(async () => {
       try {
         const res =
           await api.get(
@@ -28,43 +29,94 @@ export default function Dashboard() {
           error
         );
       }
-    };
+    }, []);
 
   useEffect(() => {
     refreshJobs();
 
-    const user =
-      JSON.parse(
-        localStorage.getItem(
-          "user"
-        )
+    const userStr =
+      localStorage.getItem(
+        "user"
       );
 
-    if (user) {
-      socket.emit(
-        "join",
-        user._id || user.id
-      );
+    if (!userStr) {
+      return;
     }
 
-    socket.on(
-      "job-completed",
+    const user =
+      JSON.parse(userStr);
+
+    const userId =
+      String(
+        user._id || user.id
+      );
+
+    const joinRoom =
+      () => {
+        socket.emit(
+          "join",
+          userId
+        );
+      };
+
+    const onJobCompleted =
       (data) => {
-        console.log(
-          "Job completed:",
-          data
+        setJobs((prev) =>
+          prev.map((job) =>
+            job._id === data.jobId
+              ? {
+                  ...job,
+                  status: data.status,
+                  caption: data.caption,
+                  labels: data.labels,
+                  flagged: data.flagged,
+                  flaggedCategory:
+                    data.flaggedCategory
+                }
+              : job
+          )
         );
 
         refreshJobs();
-      }
+      };
+
+    joinRoom();
+    socket.on("connect", joinRoom);
+    socket.on(
+      "job-completed",
+      onJobCompleted
     );
 
     return () => {
+      socket.off("connect", joinRoom);
       socket.off(
-        "job-completed"
+        "job-completed",
+        onJobCompleted
       );
     };
-  }, []);
+  }, [refreshJobs]);
+
+  useEffect(() => {
+    const hasActiveJobs =
+      jobs.some(
+        (job) =>
+          job.status === "pending" ||
+          job.status === "processing"
+      );
+
+    if (!hasActiveJobs) {
+      return;
+    }
+
+    const interval =
+      setInterval(
+        refreshJobs,
+        3000
+      );
+
+    return () =>
+      clearInterval(interval);
+  }, [jobs, refreshJobs]);
 
   const totalJobs =
     jobs.length;

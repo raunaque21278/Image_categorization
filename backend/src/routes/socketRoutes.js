@@ -27,7 +27,7 @@ router.post(
     const io =
       getIO();
 
-    io.to(userId).emit(
+    io.to(String(userId)).emit(
       "job-completed",
       {
         jobId,

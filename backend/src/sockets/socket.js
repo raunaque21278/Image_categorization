@@ -20,7 +20,7 @@ const initializeSocket = (server) => {
     socket.on(
       "join",
       (userId) => {
-        socket.join(userId);
+    socket.join(String(userId));
 
         console.log(
           `User ${userId} joined`
