@@ -10,9 +10,10 @@ const retryJob =
     try {
 
       const job =
-        await Job.findById(
-          req.params.id
-        );
+        await Job.findOne({
+          _id: req.params.id,
+          userId: req.user.id
+        });
 
       if (!job) {
 

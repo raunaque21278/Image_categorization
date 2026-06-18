@@ -1,0 +1,90 @@
+# Render Blueprint — deploy from GitHub: https://dashboard.render.com
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: media-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: MONGO_URI
+        fromDatabase:
+          name: media-mongo
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: media-redis
+          type: redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: UPLOADS_DIR
+        value: /data/uploads
+      - key: CORS_ORIGIN
+        sync: false
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 5000
+    disk:
+      name: uploads
+      mountPath: /data/uploads
+      sizeGB: 1
+
+  - type: worker
+    name: media-worker
+    runtime: docker
+    dockerfilePath: ./worker/Dockerfile
+    dockerContext: ./worker
+    plan: free
+    envVars:
+      - key: MONGO_URI
+        fromDatabase:
+          name: media-mongo
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: media-redis
+          type: redis
+          property: connectionString
+      - key: API_URL
+        fromService:
+          name: media-api
+          type: web
+          property: hostport
+      - key: UPLOADS_DIR
+        value: /data/uploads
+      - key: HF_API_KEY
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/google-vision.json
+    disk:
+      name: uploads
+      mountPath: /data/uploads
+      sizeGB: 1
+
+  - type: web
+    name: media-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: free
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_SOCKET_URL
+        sync: false
+      - key: VITE_ASSETS_URL
+        sync: false
+
+  - type: redis
+    name: media-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: media-mongo
+    plan: free

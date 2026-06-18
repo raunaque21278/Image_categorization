@@ -4,8 +4,9 @@ node_modules/
 # Environment & secrets (never commit real values)
 .env
 .env.local
-.env.*.local
+.env.docker
 !.env.example
+!.env.docker.example
 
 # Google Cloud service account keys
 **/google-vision.json

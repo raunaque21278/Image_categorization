@@ -29,7 +29,8 @@ A full-stack microservice that accepts user-uploaded images, processes them asyn
 13. [Real-Time Job Updates](#real-time-job-updates)
 14. [Flagged Content Handling](#flagged-content-handling)
 15. [Scalability Considerations](#scalability-considerations)
-16. [Known Limitations](#known-limitations)
+16. [Cloud Deployment](#cloud-deployment)
+17. [Known Limitations](#known-limitations)
 
 ---
 
@@ -62,7 +63,8 @@ When a user uploads an image, the system:
 | Flagged content surfacing | Distinct red styling + flagged count on dashboard |
 | Real-time status updates | Socket.IO WebSockets (worker → API → client) |
 | Frontend upload flow | Choose file → click **Upload** to start processing |
-| Docker containerisation | Planned via `docker-compose.yml` (see limitations) |
+| Docker containerisation | `docker-compose.yml` — API, worker, Redis, MongoDB, frontend |
+| Postman collection | `postman collections/Postman Collections.postman_collection.json` |
 
 ---
 
@@ -465,7 +467,44 @@ All job endpoints require `Authorization: Bearer <token>`.
 
 ---
 
-## How to Run Locally
+## How to Run with Docker (Recommended)
+
+Per the interview spec, the full system runs with one command:
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed
+- Google Cloud Vision JSON key at `worker/config/google-vision.json`
+- Hugging Face API token
+
+### Steps
+
+```bash
+# 1. Copy environment template
+cp .env.docker.example .env
+
+# 2. Edit .env — set HF_API_KEY and JWT_SECRET
+# 3. Ensure worker/config/google-vision.json exists (GCP service account)
+
+# 4. Start all services
+docker compose up --build
+```
+
+### Docker services
+
+| Service | URL | Description |
+|---|---|---|
+| **Frontend** | http://localhost:3000 | React UI (nginx) |
+| **API** | http://localhost:5000 | Express REST + WebSocket |
+| **Worker** | — | BullMQ consumer + AI pipeline |
+| **MongoDB** | localhost:27017 | Job & user data |
+| **Redis** | localhost:6379 | BullMQ queue |
+
+Open **http://localhost:3000** → sign up → choose file → click **Upload**.
+
+---
+
+## How to Run Locally (Manual)
 
 ### Prerequisites
 
@@ -694,7 +733,68 @@ Per the spec:
 3. Idempotency keys to prevent duplicate processing on retry
 4. Rate limiting on upload endpoint
 5. Kubernetes HPA for worker pods based on queue depth
-6. Proper SafeSearch-based flagging instead of keyword matching
+6. Kubernetes HPA for worker pods based on queue depth
+
+---
+
+## Cloud Deployment
+
+### Deployed Application URL
+
+> **Deploy via Render (recommended):** Connect this GitHub repo at [Render Dashboard](https://dashboard.render.com) → **New Blueprint** → select `render.yaml`.
+
+After deployment, add your live URL here:
+
+| Service | URL |
+|---|---|
+| **Frontend** | `https://your-frontend.onrender.com` |
+| **API** | `https://your-api.onrender.com` |
+
+### Render (Blueprint)
+
+The repo includes `render.yaml` with:
+
+- **media-api** — Express API (Docker)
+- **media-worker** — Background worker (Docker)
+- **media-frontend** — React SPA (Docker + nginx)
+- **media-mongo** — Managed MongoDB
+- **media-redis** — Managed Redis
+
+**Steps:**
+
+1. Push code to [github.com/raunaque21278/Image_categorization](https://github.com/raunaque21278/Image_categorization)
+2. Go to [Render](https://render.com) → **New** → **Blueprint**
+3. Connect the repo and apply `render.yaml`
+4. Set environment variables in Render dashboard:
+   - `HF_API_KEY` — Hugging Face token
+   - `CORS_ORIGIN` — your frontend URL (e.g. `https://media-frontend.onrender.com`)
+   - Upload `google-vision.json` as a secret file for the worker
+   - Frontend build args: `VITE_API_URL`, `VITE_SOCKET_URL`, `VITE_ASSETS_URL` pointing to API URL
+5. Enable **prepayment billing** on Google Cloud for Vision API
+
+### CI/CD
+
+GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push to `main`:
+
+- Installs dependencies for backend, worker, frontend
+- Builds the frontend
+- Validates `docker-compose.yml`
+
+### Production environment variables
+
+| Variable | Service | Description |
+|---|---|---|
+| `MONGO_URI` | API, Worker | MongoDB connection string |
+| `REDIS_URL` | API, Worker | Redis connection string |
+| `JWT_SECRET` | API | JWT signing secret |
+| `HF_API_KEY` | Worker | Hugging Face Inference API |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Worker | Path to GCP Vision JSON |
+| `API_URL` | Worker | Public API URL for socket callback |
+| `UPLOADS_DIR` | API, Worker | Shared uploads path (`/data/uploads`) |
+| `CORS_ORIGIN` | API | Frontend origin for CORS + Socket.IO |
+| `VITE_API_URL` | Frontend | API base URL at build time |
+| `VITE_SOCKET_URL` | Frontend | WebSocket URL at build time |
+| `VITE_ASSETS_URL` | Frontend | Image asset base URL |
 
 ---
 
@@ -702,17 +802,11 @@ Per the spec:
 
 | Item | Status |
 |---|---|
-| `docker-compose.yml` | Not yet included — required for one-command local spin-up per spec |
-| Deployed application URL | Not yet deployed — needs cloud hosting |
-| Postman / OpenAPI collection | Not yet included |
-| Unit tests on worker pipeline + retry | Not yet written — expected minimum per spec |
-| Retry route registration | `retryRoutes` imported in `server.js` but not mounted — retry endpoint inactive |
-| Retry UI button | Frontend does not expose retry action for failed jobs |
-| Google Vision billing | Requires GCP prepayment billing enabled — not a code issue; Vision API works once billing is active |
-| Safety check | SafeSearch annotation fetched via Google Vision; keyword list used as supplementary signal |
-| `detectionService.js` | HF DETR object detection service exists but is not wired into the pipeline |
-| Hardcoded localhost URLs | Frontend and worker notifier use `http://localhost:5000` |
-| No HTTPS / production CORS config | CORS set to `*` for development |
+| Deployed URL | Deploy via Render Blueprint — add live URL after first deploy |
+| Google Vision billing | Requires GCP prepayment billing — not a code issue |
+| Shared uploads on Render | API and worker need shared disk or object storage (S3/GCS) for production scale |
+| `detectionService.js` | HF DETR service exists but is not wired into the pipeline |
+| Socket callback auth | `/api/socket/job-completed` is unauthenticated — secure via private network in Docker |
 
 ---
 

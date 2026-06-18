@@ -5,7 +5,8 @@ const initializeSocket = (server) => {
 
   io = new Server(server, {
     cors: {
-      origin: "*",
+      origin:
+        process.env.CORS_ORIGIN || "*",
       methods: ["GET", "POST"]
     }
   });

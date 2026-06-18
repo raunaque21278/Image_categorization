@@ -41,12 +41,20 @@ const handleJob =
       job
     );
 
-    const fullImagePath =
+    const uploadsRoot =
+      process.env.UPLOADS_DIR ||
       path.join(
         __dirname,
-        "../../backend",
-        imagePath
+        "../../backend"
       );
+
+    const fullImagePath =
+      path.isAbsolute(imagePath)
+        ? imagePath
+        : path.join(
+            uploadsRoot,
+            imagePath
+          );
 
     console.log(
       "Image Path:",

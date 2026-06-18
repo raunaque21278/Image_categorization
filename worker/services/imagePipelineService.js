@@ -72,6 +72,7 @@ const processImage =
     // Safety Check
     const safety =
       checkSafety(
+        visionResult.safeSearch,
         uniqueLabels
       );
 
