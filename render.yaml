@@ -22,17 +22,13 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: UPLOADS_DIR
-        value: /data/uploads
+        value: /tmp/uploads
       - key: CORS_ORIGIN
         sync: false
       - key: HOST
         value: 0.0.0.0
       - key: PORT
         value: 5000
-    disk:
-      name: uploads
-      mountPath: /data/uploads
-      sizeGB: 1
 
   - type: worker
     name: media-worker
@@ -53,15 +49,11 @@ services:
       - key: API_URL
         value: https://media-api.onrender.com
       - key: UPLOADS_DIR
-        value: /data/uploads
+        value: /tmp/uploads
       - key: HF_API_KEY
         sync: false
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: /etc/secrets/google-vision.json
-    disk:
-      name: uploads
-      mountPath: /data/uploads
-      sizeGB: 1
 
   - type: web
     name: media-frontend
