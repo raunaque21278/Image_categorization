@@ -4,11 +4,27 @@ const classifyImage =
 const analyzeImage =
   require("./visionService");
 
-const generateCaption =
-  require("./captionService");
-
 const checkSafety =
   require("./safetyService");
+
+const buildCaption =
+  (labels) => {
+    if (labels.includes("Dog")) {
+      return "A dog is visible in the image.";
+    }
+
+    if (labels.includes("Cat")) {
+      return "A cat is visible in the image.";
+    }
+
+    if (labels.length === 0) {
+      return "No caption generated";
+    }
+
+    return `Image contains ${labels
+      .slice(0, 3)
+      .join(", ")}`;
+  };
 
 const processImage =
   async (imagePath) => {
@@ -59,39 +75,8 @@ const processImage =
         uniqueLabels
       );
 
-    let caption;
-
-    try {
-
-      caption =
-        await generateCaption(
-          imagePath
-        );
-
-    } catch {
-
-      if (
-        uniqueLabels.includes("Dog")
-      ) {
-
-        caption =
-          "A dog is visible in the image.";
-
-      } else if (
-        uniqueLabels.includes("Cat")
-      ) {
-
-        caption =
-          "A cat is visible in the image.";
-
-      } else {
-
-        caption =
-          `Image contains ${uniqueLabels
-            .slice(0, 3)
-            .join(", ")}`;
-      }
-    }
+    const caption =
+      buildCaption(uniqueLabels);
 
     return {
 
