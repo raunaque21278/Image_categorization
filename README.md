@@ -23,15 +23,13 @@ A full-stack microservice that accepts user-uploaded images, processes them asyn
 7. [Tech Stack](#tech-stack)
 8. [Project Structure](#project-structure)
 9. [API Endpoints](#api-endpoints)
-10. [How to Run Locally](#how-to-run-locally)
+10. [Docker — Run the Full Stack](#docker--run-the-full-stack)
 11. [Environment Variables](#environment-variables)
 12. [Design Decisions & Assumptions](#design-decisions--assumptions)
 13. [Real-Time Job Updates](#real-time-job-updates)
 14. [Flagged Content Handling](#flagged-content-handling)
 15. [Scalability Considerations](#scalability-considerations)
-16. [Cloud Deployment](#cloud-deployment)
-    - [DigitalOcean (Recommended)](#digitalocean-recommended--full-docker-stack)
-17. [Known Limitations](#known-limitations)
+16. [Known Limitations](#known-limitations)
 
 ---
 
@@ -64,7 +62,7 @@ When a user uploads an image, the system:
 | Flagged content surfacing | Distinct red styling + flagged count on dashboard |
 | Real-time status updates | Socket.IO WebSockets (worker → API → client) |
 | Frontend upload flow | Choose file → click **Upload** to start processing |
-| Docker containerisation | `docker-compose.yml` — API, worker, Redis, MongoDB, frontend |
+| Docker containerisation | `docker compose up --build` — API, worker, Redis, MongoDB, frontend |
 | Postman collection | `postman collections/Postman Collections.postman_collection.json` |
 
 ---
@@ -384,7 +382,7 @@ Google Cloud Vision powers the core enrichment and safety steps:
 |---|---|---|
 | **Application** | MERN (MongoDB, Express, React, Node.js) | Required by spec; familiar full-stack pattern |
 | **Queue** | Redis + BullMQ | Reliable job queue with built-in retry, backoff, and observability |
-| **Containerisation** | Docker (docker-compose planned) | Mandatory per spec for local full-system spin-up |
+| **Containerisation** | Docker + Docker Compose | Full stack in one command; runs on any PC with Docker |
 | **AI — Labels / Objects / Safety** | **Google Cloud Vision API** | Primary service per spec; label detection, object localization, SafeSearch. Requires GCP prepayment billing — no code issue |
 | **AI — Captioning** | Hugging Face Inference API | `Salesforce/blip-image-captioning-base` for natural language captions |
 | **AI — Classification** | Hugging Face Inference API | `google/vit-base-patch16-224`; supplements Vision labels |
@@ -468,138 +466,107 @@ All job endpoints require `Authorization: Bearer <token>`.
 
 ---
 
-## How to Run with Docker (Recommended)
+## Docker — Run the Full Stack
 
-Per the interview spec, the full system runs with one command:
+Per the interview spec, the entire system runs in Docker with one command. No cloud deployment required — works on **your PC** or **any other machine** with Docker installed.
 
 ### Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed
-- Google Cloud Vision JSON key at `worker/config/google-vision.json`
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows / Mac) or Docker Engine (Linux)
+- Google Cloud Vision JSON → save as `worker/config/google-vision.json`
 - Hugging Face API token
 
-### Steps
+### Quick start
 
 ```bash
-# 1. Copy environment template
+# 1. Clone the repo
+git clone https://github.com/raunaque21278/Image_categorization.git
+cd Image_categorization
+
+# 2. Create environment file
 cp .env.docker.example .env
+# Edit .env — set JWT_SECRET and HF_API_KEY
 
-# 2. Edit .env — set HF_API_KEY and JWT_SECRET
-# 3. Ensure worker/config/google-vision.json exists (GCP service account)
+# 3. Add Google Vision credentials
+# Place your GCP service account JSON at:
+#   worker/config/google-vision.json
 
-# 4. Start all services
+# 4. Start everything
 docker compose up --build
 ```
 
-### Docker services
+First build may take **5–15 minutes**. When all containers are healthy, open:
 
-| Service | URL | Description |
+| Service | URL |
+|---|---|
+| **Frontend** | http://localhost:3000 |
+| **API** | http://localhost:5000 |
+| **Health check** | http://localhost:5000/health |
+
+Sign up → **Choose File** → click **Upload**.
+
+### Docker containers
+
+| Container | Image / build | Role |
 |---|---|---|
-| **Frontend** | http://localhost:3000 | React UI (nginx) |
-| **API** | http://localhost:5000 | Express REST + WebSocket |
-| **Worker** | — | BullMQ consumer + AI pipeline |
-| **MongoDB** | localhost:27017 | Job & user data |
-| **Redis** | localhost:6379 | BullMQ queue |
+| `media-frontend` | `frontend/Dockerfile` | React UI (nginx, port 3000) |
+| `media-api` | `backend/Dockerfile` | Express API + Socket.IO (port 5000) |
+| `media-worker` | `worker/Dockerfile` | BullMQ worker + AI pipeline |
+| `media-mongo` | `mongo:7` | MongoDB database |
+| `media-redis` | `redis:7-alpine` | BullMQ job queue |
 
-Open **http://localhost:3000** → sign up → choose file → click **Upload**.
+Shared Docker volume `uploads-data` lets the API and worker access the same uploaded images.
 
-### Local Docker vs Cloud Deployment
-
-These are **two separate ways** to run the app. Deploying to the cloud does **not** remove or break local Docker.
-
-| | **Local / VPS Docker** | **Cloud (Render)** |
-|---|---|---|
-| **Command** | `docker compose up --build` | Render Blueprint (`render.yaml`) |
-| **Uses Docker?** | Yes — all 5 services in one network | Yes — each service built from same Dockerfiles |
-| **Works the same?** | Full stack works together | Different setup — services are separate |
-| **Shared uploads** | Shared volume works | API and worker disks are separate on free tier |
-| **Frontend → API** | nginx proxies `/api` to `api:5000` | Must set public API URLs in `VITE_*` env vars |
-| **Recommended for** | Interview demo, local dev, VPS | Public URL without managing a server |
-
-**If you want the exact same behavior as local Docker in production**, deploy on a VPS (DigitalOcean, AWS EC2, etc.):
+### Useful Docker commands
 
 ```bash
-# On your server (with Docker installed)
-git clone https://github.com/raunaque21278/Image_categorization.git
-cd Image_categorization
-cp .env.docker.example .env
-# Edit .env, add google-vision.json
+# Run in background
+docker compose up -d --build
 
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# View logs
+docker compose logs -f
+
+# Check status
+docker compose ps
+
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (fresh start)
+docker compose down -v
 ```
 
-Your app will be live at `http://YOUR_SERVER_IP:3000` — same Docker stack as local.
+### Run on another PC
 
----
+1. Install Docker Desktop  
+2. Clone this repo  
+3. Copy `.env` and `worker/config/google-vision.json` (secrets — not in Git)  
+4. Run `docker compose up --build`  
 
-## How to Run Locally (Manual)
+Same steps work on Windows, Mac, and Linux.
 
-### Prerequisites
+### Optional — run without Docker (manual)
 
-- Node.js 18+
-- MongoDB (local or Atlas)
-- Redis server
-- API keys: **Google Cloud Vision** (with prepayment billing enabled), Hugging Face
+<details>
+<summary>Click to expand manual setup (Node.js + local MongoDB + Redis)</summary>
 
-### 1. Start infrastructure
+**Prerequisites:** Node.js 18+, MongoDB, Redis, API keys.
 
 ```bash
-# MongoDB (if running locally)
-mongod
+# Terminal 1 — MongoDB & Redis (or use local installs)
+# Terminal 2 — API
+cd backend && npm install && cp .env.example .env && npm run dev
 
-# Redis (if running locally)
-redis-server
+# Terminal 3 — Worker
+cd worker && npm install && cp .env.example .env && npm run dev
+
+# Terminal 4 — Frontend
+cd frontend && npm install && cp .env.example .env && npm run dev
 ```
 
-### 2. Backend (API)
+Frontend: http://localhost:5173 | API: http://localhost:5000
 
-```bash
-cd backend
-npm install
-# Create .env (see Environment Variables section)
-npm run dev
-# Runs on http://localhost:5000
-```
-
-### 3. Worker
-
-```bash
-cd worker
-npm install
-# Create .env + place Google Cloud credentials JSON
-npm run dev
-```
-
-### 4. Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-# Runs on http://localhost:5173
-```
-
-### 5. Verify
-
-1. Open `http://localhost:5173`
-2. Sign up / log in
-3. On the **Dashboard**, upload an image:
-   - Click **Choose File** and select a JPG, PNG, or WEBP image (≤ 5 MB)
-   - Click the **Upload** button to submit — selecting a file alone does not start processing; you must click **Upload**
-4. Watch job status update via WebSocket when processing completes
-5. View caption, labels, and safety classification on the dashboard
-
-### Using the Frontend (Upload Flow)
-
-The upload UI is a two-step action on the Dashboard (`UploadForm.jsx`):
-
-```
-Choose File  →  select image (JPG / PNG / WEBP, max 5 MB)
-     ↓
-Upload       →  click to send the file to the API and create a job
-```
-
-After clicking **Upload**, the API returns a job ID immediately and the job appears in your list with status `pending`. Processing runs in the background via the worker — you do not need to wait on the upload screen.
+</details>
 
 ---
 
@@ -698,11 +665,11 @@ Google Vision SafeSearch data is fetched in `visionService.js`. The `safetyServi
 
 ### CI/CD
 
-Currently manual deployment via Git push to GitHub. A GitHub Actions pipeline (lint → test → build → deploy) would be added with more time.
+GitHub Actions (`.github/workflows/ci.yml`) validates builds and `docker-compose.yml` on every push to `main`.
 
 ### Cloud Platform
 
-Designed for local development first. Production deployment would target any container-friendly platform (Railway, Render, AWS ECS, GCP Cloud Run).
+Not required. The project is **Docker-containerized** and runs with `docker compose up --build` on any machine with Docker installed.
 
 ---
 
@@ -761,182 +728,6 @@ Per the spec:
 3. Idempotency keys to prevent duplicate processing on retry
 4. Rate limiting on upload endpoint
 5. Kubernetes HPA for worker pods based on queue depth
-6. Kubernetes HPA for worker pods based on queue depth
-
----
-
-## Cloud Deployment
-
-### DigitalOcean (Recommended — full Docker stack)
-
-Deploy the **same Docker Compose stack** as local on a DigitalOcean Droplet. All services (API, worker, MongoDB, Redis, frontend) run together with shared uploads.
-
-#### Step 1 — Create a Droplet
-
-1. Go to [DigitalOcean](https://www.digitalocean.com) → **Create** → **Droplets**
-2. Choose:
-   - **Image:** Ubuntu 22.04 LTS
-   - **Plan:** Basic — **$6/month** (1 GB RAM) or **$12/month** (2 GB RAM recommended)
-   - **Region:** Closest to you
-   - **Authentication:** SSH key (recommended) or password
-3. Click **Create Droplet**
-4. Copy the **public IP** (e.g. `157.230.123.45`)
-
-#### Step 2 — Open firewall ports
-
-In DigitalOcean → **Networking** → **Firewalls** (or use Droplet console):
-
-| Port | Purpose |
-|---|---|
-| **22** | SSH |
-| **80** | Frontend (HTTP) |
-| **443** | HTTPS (optional, for SSL later) |
-
-Do **not** expose ports 27017 (MongoDB) or 6379 (Redis) publicly.
-
-#### Step 3 — SSH into the Droplet
-
-```bash
-ssh root@YOUR_DROPLET_IP
-```
-
-#### Step 4 — Install Docker (if not pre-installed)
-
-```bash
-curl -fsSL https://get.docker.com | sh
-```
-
-#### Step 5 — Clone and configure
-
-```bash
-git clone https://github.com/raunaque21278/Image_categorization.git
-cd Image_categorization
-
-cp .env.docker.example .env
-nano .env
-```
-
-Edit `.env`:
-
-```env
-JWT_SECRET=your-long-random-secret
-HF_API_KEY=hf_your_token_here
-CORS_ORIGIN=http://YOUR_DROPLET_IP
-GOOGLE_VISION_KEY_PATH=./worker/config/google-vision.json
-```
-
-Add Google Vision credentials:
-
-```bash
-nano worker/config/google-vision.json
-# Paste your GCP service account JSON, save
-```
-
-#### Step 6 — Start the app
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.do.yml up -d --build
-```
-
-Or use the setup script:
-
-```bash
-chmod +x deploy/digitalocean-setup.sh
-./deploy/digitalocean-setup.sh
-```
-
-#### Step 7 — Open your app
-
-| Service | URL |
-|---|---|
-| **Frontend** | `http://YOUR_DROPLET_IP` |
-| **API** (via nginx proxy) | `http://YOUR_DROPLET_IP/api` |
-
-Sign up → choose file → click **Upload**.
-
-#### Useful commands on the Droplet
-
-```bash
-# View logs
-docker compose -f docker-compose.yml -f docker-compose.do.yml logs -f
-
-# Check status
-docker compose -f docker-compose.yml -f docker-compose.do.yml ps
-
-# Restart after code update
-git pull
-docker compose -f docker-compose.yml -f docker-compose.do.yml up -d --build
-
-# Stop everything
-docker compose -f docker-compose.yml -f docker-compose.do.yml down
-```
-
-#### Add to README after deploy
-
-Update **Deployed Application URL**:
-
-```
-http://YOUR_DROPLET_IP
-```
-
----
-
-### Deployed Application URL
-
-> **Deploy via Render (recommended):** Connect this GitHub repo at [Render Dashboard](https://dashboard.render.com) → **New Blueprint** → select `render.yaml`.
-
-After deployment, add your live URL here:
-
-| Service | URL |
-|---|---|
-| **Frontend** | `https://your-frontend.onrender.com` |
-| **API** | `https://your-api.onrender.com` |
-
-### Render (Blueprint)
-
-The repo includes `render.yaml` with:
-
-- **media-api** — Express API (Docker)
-- **media-worker** — Background worker (Docker)
-- **media-frontend** — React SPA (Docker + nginx)
-- **media-mongo** — Managed MongoDB
-- **media-redis** — Managed Redis
-
-**Steps:**
-
-1. Push code to [github.com/raunaque21278/Image_categorization](https://github.com/raunaque21278/Image_categorization)
-2. Go to [Render](https://render.com) → **New** → **Blueprint**
-3. Connect the repo and apply `render.yaml`
-4. Set environment variables in Render dashboard:
-   - `HF_API_KEY` — Hugging Face token
-   - `CORS_ORIGIN` — your frontend URL (e.g. `https://media-frontend.onrender.com`)
-   - Upload `google-vision.json` as a secret file for the worker
-   - Frontend build args: `VITE_API_URL`, `VITE_SOCKET_URL`, `VITE_ASSETS_URL` pointing to API URL
-5. Enable **prepayment billing** on Google Cloud for Vision API
-
-### CI/CD
-
-GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push to `main`:
-
-- Installs dependencies for backend, worker, frontend
-- Builds the frontend
-- Validates `docker-compose.yml`
-
-### Production environment variables
-
-| Variable | Service | Description |
-|---|---|---|
-| `MONGO_URI` | API, Worker | MongoDB connection string |
-| `REDIS_URL` | API, Worker | Redis connection string |
-| `JWT_SECRET` | API | JWT signing secret |
-| `HF_API_KEY` | Worker | Hugging Face Inference API |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Worker | Path to GCP Vision JSON |
-| `API_URL` | Worker | Public API URL for socket callback |
-| `UPLOADS_DIR` | API, Worker | Shared uploads path (`/data/uploads`) |
-| `CORS_ORIGIN` | API | Frontend origin for CORS + Socket.IO |
-| `VITE_API_URL` | Frontend | API base URL at build time |
-| `VITE_SOCKET_URL` | Frontend | WebSocket URL at build time |
-| `VITE_ASSETS_URL` | Frontend | Image asset base URL |
 
 ---
 
@@ -944,11 +735,10 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push to `main
 
 | Item | Status |
 |---|---|
-| Deployed URL | Deploy via Render Blueprint — add live URL after first deploy |
 | Google Vision billing | Requires GCP prepayment billing — not a code issue |
-| Shared uploads on Render | API and worker need shared disk or object storage (S3/GCS) for production scale |
 | `detectionService.js` | HF DETR service exists but is not wired into the pipeline |
-| Socket callback auth | `/api/socket/job-completed` is unauthenticated — secure via private network in Docker |
+| Socket callback auth | `/api/socket/job-completed` is unauthenticated — acceptable on private Docker network |
+| Docker RAM | Recommend **4 GB+ RAM** for first `docker compose build` |
 
 ---
 

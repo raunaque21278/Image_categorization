@@ -1,3 +1,6 @@
+# Full stack — run with: docker compose up --build
+# Requires .env (copy from .env.docker.example) and worker/config/google-vision.json
+
 services:
   mongo:
     image: mongo:7
@@ -5,15 +8,22 @@ services:
     restart: unless-stopped
     volumes:
       - mongo-data:/data/db
-    ports:
-      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   redis:
     image: redis:7-alpine
     container_name: media-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
@@ -35,8 +45,16 @@ services:
     volumes:
       - uploads-data:/data/uploads
     depends_on:
-      - mongo
-      - redis
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   worker:
     build:
@@ -48,7 +66,7 @@ services:
       MONGO_URI: mongodb://mongo:27017/media-processing
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      HF_API_KEY: ${HF_API_KEY}
+      HF_API_KEY: ${HF_API_KEY:?Set HF_API_KEY in .env}
       UPLOADS_DIR: /data/uploads
       API_URL: http://api:5000
       GOOGLE_APPLICATION_CREDENTIALS: /secrets/google-vision.json
@@ -56,9 +74,12 @@ services:
       - uploads-data:/data/uploads
       - ${GOOGLE_VISION_KEY_PATH:-./worker/config/google-vision.json}:/secrets/google-vision.json:ro
     depends_on:
-      - mongo
-      - redis
-      - api
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
 
   frontend:
     build:
@@ -74,7 +95,8 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   mongo-data:

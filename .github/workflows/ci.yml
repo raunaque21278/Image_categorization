@@ -35,4 +35,8 @@ jobs:
         run: npm run build
 
       - name: Validate docker-compose
-        run: docker compose config
+        run: |
+          cp .env.docker.example .env
+          echo "HF_API_KEY=ci-dummy" >> .env
+          echo "JWT_SECRET=ci-dummy" >> .env
+          docker compose config
