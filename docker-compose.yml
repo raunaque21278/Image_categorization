@@ -65,6 +65,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
+        NGINX_CONFIG: nginx.compose.conf
         VITE_API_URL: /api
         VITE_SOCKET_URL: ""
         VITE_ASSETS_URL: ""

@@ -51,10 +51,7 @@ services:
           type: redis
           property: connectionString
       - key: API_URL
-        fromService:
-          name: media-api
-          type: web
-          property: hostport
+        value: https://media-api.onrender.com
       - key: UPLOADS_DIR
         value: /data/uploads
       - key: HF_API_KEY

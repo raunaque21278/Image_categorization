@@ -502,6 +502,33 @@ docker compose up --build
 
 Open **http://localhost:3000** → sign up → choose file → click **Upload**.
 
+### Local Docker vs Cloud Deployment
+
+These are **two separate ways** to run the app. Deploying to the cloud does **not** remove or break local Docker.
+
+| | **Local / VPS Docker** | **Cloud (Render)** |
+|---|---|---|
+| **Command** | `docker compose up --build` | Render Blueprint (`render.yaml`) |
+| **Uses Docker?** | Yes — all 5 services in one network | Yes — each service built from same Dockerfiles |
+| **Works the same?** | Full stack works together | Different setup — services are separate |
+| **Shared uploads** | Shared volume works | API and worker disks are separate on free tier |
+| **Frontend → API** | nginx proxies `/api` to `api:5000` | Must set public API URLs in `VITE_*` env vars |
+| **Recommended for** | Interview demo, local dev, VPS | Public URL without managing a server |
+
+**If you want the exact same behavior as local Docker in production**, deploy on a VPS (DigitalOcean, AWS EC2, etc.):
+
+```bash
+# On your server (with Docker installed)
+git clone https://github.com/raunaque21278/Image_categorization.git
+cd Image_categorization
+cp .env.docker.example .env
+# Edit .env, add google-vision.json
+
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Your app will be live at `http://YOUR_SERVER_IP:3000` — same Docker stack as local.
+
 ---
 
 ## How to Run Locally (Manual)

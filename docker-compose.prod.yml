@@ -1,0 +1,19 @@
+# Production Docker Compose — deploy on any VPS with Docker installed
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  api:
+    restart: always
+    environment:
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+
+  worker:
+    restart: always
+    environment:
+      HF_API_KEY: ${HF_API_KEY:?Set HF_API_KEY in .env}
+
+  frontend:
+    restart: always
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
