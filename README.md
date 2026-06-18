@@ -30,6 +30,7 @@ A full-stack microservice that accepts user-uploaded images, processes them asyn
 14. [Flagged Content Handling](#flagged-content-handling)
 15. [Scalability Considerations](#scalability-considerations)
 16. [Cloud Deployment](#cloud-deployment)
+    - [DigitalOcean (Recommended)](#digitalocean-recommended--full-docker-stack)
 17. [Known Limitations](#known-limitations)
 
 ---
@@ -765,6 +766,120 @@ Per the spec:
 ---
 
 ## Cloud Deployment
+
+### DigitalOcean (Recommended — full Docker stack)
+
+Deploy the **same Docker Compose stack** as local on a DigitalOcean Droplet. All services (API, worker, MongoDB, Redis, frontend) run together with shared uploads.
+
+#### Step 1 — Create a Droplet
+
+1. Go to [DigitalOcean](https://www.digitalocean.com) → **Create** → **Droplets**
+2. Choose:
+   - **Image:** Ubuntu 22.04 LTS
+   - **Plan:** Basic — **$6/month** (1 GB RAM) or **$12/month** (2 GB RAM recommended)
+   - **Region:** Closest to you
+   - **Authentication:** SSH key (recommended) or password
+3. Click **Create Droplet**
+4. Copy the **public IP** (e.g. `157.230.123.45`)
+
+#### Step 2 — Open firewall ports
+
+In DigitalOcean → **Networking** → **Firewalls** (or use Droplet console):
+
+| Port | Purpose |
+|---|---|
+| **22** | SSH |
+| **80** | Frontend (HTTP) |
+| **443** | HTTPS (optional, for SSL later) |
+
+Do **not** expose ports 27017 (MongoDB) or 6379 (Redis) publicly.
+
+#### Step 3 — SSH into the Droplet
+
+```bash
+ssh root@YOUR_DROPLET_IP
+```
+
+#### Step 4 — Install Docker (if not pre-installed)
+
+```bash
+curl -fsSL https://get.docker.com | sh
+```
+
+#### Step 5 — Clone and configure
+
+```bash
+git clone https://github.com/raunaque21278/Image_categorization.git
+cd Image_categorization
+
+cp .env.docker.example .env
+nano .env
+```
+
+Edit `.env`:
+
+```env
+JWT_SECRET=your-long-random-secret
+HF_API_KEY=hf_your_token_here
+CORS_ORIGIN=http://YOUR_DROPLET_IP
+GOOGLE_VISION_KEY_PATH=./worker/config/google-vision.json
+```
+
+Add Google Vision credentials:
+
+```bash
+nano worker/config/google-vision.json
+# Paste your GCP service account JSON, save
+```
+
+#### Step 6 — Start the app
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.do.yml up -d --build
+```
+
+Or use the setup script:
+
+```bash
+chmod +x deploy/digitalocean-setup.sh
+./deploy/digitalocean-setup.sh
+```
+
+#### Step 7 — Open your app
+
+| Service | URL |
+|---|---|
+| **Frontend** | `http://YOUR_DROPLET_IP` |
+| **API** (via nginx proxy) | `http://YOUR_DROPLET_IP/api` |
+
+Sign up → choose file → click **Upload**.
+
+#### Useful commands on the Droplet
+
+```bash
+# View logs
+docker compose -f docker-compose.yml -f docker-compose.do.yml logs -f
+
+# Check status
+docker compose -f docker-compose.yml -f docker-compose.do.yml ps
+
+# Restart after code update
+git pull
+docker compose -f docker-compose.yml -f docker-compose.do.yml up -d --build
+
+# Stop everything
+docker compose -f docker-compose.yml -f docker-compose.do.yml down
+```
+
+#### Add to README after deploy
+
+Update **Deployed Application URL**:
+
+```
+http://YOUR_DROPLET_IP
+```
+
+---
 
 ### Deployed Application URL
 
