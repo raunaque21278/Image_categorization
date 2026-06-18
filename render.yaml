@@ -72,6 +72,7 @@ services:
   - type: redis
     name: media-redis
     plan: free
+    ipAllowList: []
     maxmemoryPolicy: allkeys-lru
 
 databases:
