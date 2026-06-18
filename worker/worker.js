@@ -92,3 +92,34 @@ worker.on(
 console.log(
   "Worker Service Started"
 );
+
+const http =
+  require("http");
+
+const PORT =
+  process.env.PORT || 10000;
+
+http
+  .createServer(
+    (req, res) => {
+      if (
+        req.url === "/health"
+      ) {
+        res.writeHead(200);
+        res.end("ok");
+        return;
+      }
+
+      res.writeHead(200);
+      res.end("worker running");
+    }
+  )
+  .listen(
+    PORT,
+    "0.0.0.0",
+    () => {
+      console.log(
+        `Worker health on ${PORT}`
+      );
+    }
+  );

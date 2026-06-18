@@ -11,8 +11,7 @@ RUN mkdir -p uploads
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
-ENV PORT=5000
-ENV UPLOADS_DIR=/data/uploads
+ENV UPLOADS_DIR=/tmp/uploads
 
 EXPOSE 5000
 

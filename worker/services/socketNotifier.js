@@ -1,15 +1,27 @@
 const axios =
   require("axios");
 
-const API_URL =
-  process.env.API_URL ||
-  "http://localhost:5000";
+const getApiUrl =
+  () => {
+    let apiUrl =
+      process.env.API_URL ||
+      "http://localhost:5000";
+
+    if (
+      !apiUrl.startsWith("http")
+    ) {
+      apiUrl =
+        `https://${apiUrl}`;
+    }
+
+    return apiUrl;
+  };
 
 const notifyJobCompleted =
   async (job) => {
 
     await axios.post(
-      `${API_URL}/api/socket/job-completed`,
+      `${getApiUrl()}/api/socket/job-completed`,
       {
         userId:
           job.userId.toString(),

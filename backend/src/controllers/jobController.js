@@ -1,4 +1,5 @@
 const Job = require("../models/Job");
+const path = require("path");
 const imageQueue = require(
   "../queue/imageQueue"
 );
@@ -13,10 +14,16 @@ const uploadImage = async (
       });
     }
 
+    const filename =
+      path.basename(req.file.path);
+
+    const imageUrl =
+      `uploads/${filename}`;
+
     const job = await Job.create({
       userId: req.user.id,
 
-      imageUrl: req.file.path,
+      imageUrl,
 
       status: "pending"
     });
@@ -28,7 +35,7 @@ const uploadImage = async (
 
         userId: req.user.id,
 
-        imagePath: req.file.path
+        imagePath: imageUrl
       },
       {
         attempts: 3,

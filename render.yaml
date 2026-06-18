@@ -27,15 +27,14 @@ services:
         sync: false
       - key: HOST
         value: 0.0.0.0
-      - key: PORT
-        value: 5000
 
-  - type: worker
+  - type: web
     name: media-worker
     runtime: docker
     dockerfilePath: ./worker/Dockerfile
     dockerContext: ./worker
     plan: free
+    healthCheckPath: /health
     envVars:
       - key: MONGO_URI
         fromDatabase:
@@ -47,13 +46,18 @@ services:
           type: redis
           property: connectionString
       - key: API_URL
-        value: https://media-api.onrender.com
+        fromService:
+          name: media-api
+          type: web
+          property: host
       - key: UPLOADS_DIR
         value: /tmp/uploads
       - key: HF_API_KEY
         sync: false
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: /etc/secrets/google-vision.json
+      - key: HOST
+        value: 0.0.0.0
 
   - type: web
     name: media-frontend

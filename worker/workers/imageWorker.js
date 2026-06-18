@@ -1,6 +1,3 @@
-const path =
-  require("path");
-
 const JobRepository =
   require("../repositories/jobRepository");
 
@@ -9,6 +6,9 @@ const processImage =
 
 const notifyJobCompleted =
   require("../services/socketNotifier");
+
+const resolveImagePath =
+  require("../utils/resolveImagePath");
 
 const handleJob =
   async (queueJob) => {
@@ -41,20 +41,10 @@ const handleJob =
       job
     );
 
-    const uploadsRoot =
-      process.env.UPLOADS_DIR ||
-      path.join(
-        __dirname,
-        "../../backend"
-      );
-
     const fullImagePath =
-      path.isAbsolute(imagePath)
-        ? imagePath
-        : path.join(
-            uploadsRoot,
-            imagePath
-          );
+      await resolveImagePath(
+        imagePath
+      );
 
     console.log(
       "Image Path:",

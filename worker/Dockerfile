@@ -10,6 +10,9 @@ RUN npm ci --omit=dev
 COPY . .
 
 ENV NODE_ENV=production
-ENV UPLOADS_DIR=/data/uploads
+ENV UPLOADS_DIR=/tmp/uploads
+ENV HOST=0.0.0.0
+
+EXPOSE 10000
 
 CMD ["node", "worker.js"]
